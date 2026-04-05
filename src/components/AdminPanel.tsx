@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Settings, Bell, LayoutDashboard, Grid, Folder, LogOut, ArrowLeft, Plus, X, Loader2 } from 'lucide-react';
+import { Package, Settings, Bell, LayoutDashboard, Grid, Folder, LogOut, ArrowLeft, Plus, X, Loader2, Edit2, Trash2, Tag } from 'lucide-react';
 
 const API_URL = 'http://localhost/RealQuillabamba/api';
 
@@ -7,19 +7,31 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showProductModal, setShowProductModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showBrandModal, setShowBrandModal] = useState(false);
   
-  const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [brandsList, setBrandsList] = useState<any[]>([]);
   
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
   
-  const [newProduct, setNewProduct] = useState({ name: '', description: '', price: '', stock: '', category_id: '', image_url: '' });
-  const [newCategory, setNewCategory] = useState({ name: '', description: '' });
+  const defaultProduct = { name: '', description: '', price: '', stock: '', category_id: '', image_url: '', brand: '' };
+  const defaultCategory = { name: '', description: '' };
+  const defaultBrand = { name: '', description: '', image_url: '' };
+  
+  const [newProduct, setNewProduct] = useState(defaultProduct);
+  const [newCategory, setNewCategory] = useState(defaultCategory);
+  const [newBrand, setNewBrand] = useState(defaultBrand);
+  
+  const [editingProductId, setEditingProductId] = useState(null);
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [editingBrandId, setEditingBrandId] = useState(null);
 
   useEffect(() => {
     fetch(`${API_URL}/categories.php`).then(res => res.json()).then(data => { if (!data.error) setCategories(data); });
     fetch(`${API_URL}/products.php`).then(res => res.json()).then(data => { if (!data.error) setProducts(data); });
+    fetch(`${API_URL}/brands.php`).then(res => res.json()).then(data => { if (!data.error) setBrandsList(data); });
   }, []);
 
   const handleSettingChange = (e) => {
@@ -27,6 +39,13 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
     const { name, value } = e.target;
     onUpdateSettings(prev => ({ ...prev, [name]: value }));
   };
+
+  const toggleBoolSetting = (name) => {
+      if (!onUpdateSettings) return;
+      onUpdateSettings(prev => ({ ...prev, [name]: prev[name] === 'false' ? 'true' : 'false' }));
+  };
+
+  const enableBrandsModule = settings?.enableBrandsModule !== 'false';
 
   const currentLinks = (() => {
     try { return JSON.parse(settings?.headerLinks || '[]'); } 
@@ -69,43 +88,109 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
       setIsSavingSettings(false);
   };
 
-  const handleAddCategory = async () => {
+  const handleSaveCategory = async () => {
       if(!newCategory.name) return;
       try {
-          const res = await fetch(`${API_URL}/categories.php`, {
-              method: 'POST',
+          const method = editingCategoryId ? 'PUT' : 'POST';
+          const url = editingCategoryId ? `${API_URL}/categories.php?id=${editingCategoryId}` : `${API_URL}/categories.php`;
+          const res = await fetch(url, {
+              method,
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(newCategory)
           });
           const data = await res.json();
           if(data.status === 'success') {
-              setCategories([...categories, { ...newCategory, id: data.id }]);
+              if (editingCategoryId) {
+                  setCategories(categories.map(c => c.id === editingCategoryId ? { ...newCategory, id: editingCategoryId } : c));
+              } else {
+                  setCategories([...categories, { ...newCategory, id: data.id }]);
+              }
               setShowCategoryModal(false);
-              setNewCategory({ name: '', description: '' });
+              setNewCategory(defaultCategory);
+              setEditingCategoryId(null);
           } else {
               alert(data.error || 'Error al guardar categoría');
           }
       } catch (e) { alert('Error de conexión'); console.error(e); }
   };
 
-  const handleAddProduct = async () => {
+  const handleDeleteCategory = async (id) => {
+      if (!window.confirm("¿Estás seguro de que deseas eliminar esta categoría? Asegúrate de que no tenga productos asociados.")) return;
+      try {
+          const res = await fetch(`${API_URL}/categories.php?id=${id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.status === 'success') {
+              setCategories(categories.filter(c => c.id !== id));
+          } else {
+              alert(data.error || 'Error al eliminar categoría');
+          }
+      } catch (e) { alert('Error de conexión'); console.error(e); }
+  };
+
+  const handleSaveBrand = async () => {
+      if(!newBrand.name) return;
+      try {
+          const method = editingBrandId ? 'PUT' : 'POST';
+          const url = editingBrandId ? `${API_URL}/brands.php?id=${editingBrandId}` : `${API_URL}/brands.php`;
+          const res = await fetch(url, {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newBrand)
+          });
+          const data = await res.json();
+          if(data.status === 'success') {
+              if (editingBrandId) {
+                  setBrandsList(brandsList.map(b => b.id === editingBrandId ? { ...newBrand, id: editingBrandId } : b));
+              } else {
+                  setBrandsList([...brandsList, { ...newBrand, id: data.id }]);
+              }
+              setShowBrandModal(false);
+              setNewBrand(defaultBrand);
+              setEditingBrandId(null);
+          } else {
+              alert(data.error || 'Error al guardar marca');
+          }
+      } catch (e) { alert('Error de conexión'); console.error(e); }
+  };
+
+  const handleDeleteBrand = async (id) => {
+      if (!window.confirm("¿Estás seguro de que deseas eliminar esta marca?")) return;
+      try {
+          const res = await fetch(`${API_URL}/brands.php?id=${id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.status === 'success') {
+              setBrandsList(brandsList.filter(b => b.id !== id));
+          } else {
+              alert(data.error || 'Error al eliminar marca');
+          }
+      } catch (e) { alert('Error de conexión'); console.error(e); }
+  };
+
+  const handleSaveProduct = async () => {
       if(!newProduct.name || !newProduct.price) {
           alert('El nombre y el precio son obligatorios');
           return;
       }
       setIsSavingProduct(true);
       try {
-          const res = await fetch(`${API_URL}/products.php`, {
-              method: 'POST',
+          const method = editingProductId ? 'PUT' : 'POST';
+          const url = editingProductId ? `${API_URL}/products.php?id=${editingProductId}` : `${API_URL}/products.php`;
+          const res = await fetch(url, {
+              method,
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(newProduct)
           });
           const data = await res.json();
           if(data.status === 'success') {
               const catName = categories.find(c => c.id == newProduct.category_id)?.name;
-              setProducts([{ ...newProduct, id: data.id, category_name: catName, status: 'Disponible' }, ...products]);
+              if (editingProductId) {
+                  setProducts(products.map(p => p.id === editingProductId ? { ...newProduct, id: editingProductId, category_name: catName, status: p.status || 'Disponible' } : p));
+              } else {
+                  setProducts([{ ...newProduct, id: data.id, category_name: catName, status: 'Disponible' }, ...products]);
+              }
               setShowProductModal(false);
-              setNewProduct({ name: '', description: '', price: '', stock: '', category_id: '', image_url: '' });
+              setNewProduct(defaultProduct);
+              setEditingProductId(null);
           } else {
               alert(data.error || 'Error del servidor al guardar producto');
           }
@@ -113,11 +198,25 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
       setIsSavingProduct(false);
   };
 
+  const handleDeleteProduct = async (id) => {
+      if (!window.confirm("¿Estás seguro de que deseas eliminar este producto?")) return;
+      try {
+          const res = await fetch(`${API_URL}/products.php?id=${id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.status === 'success') {
+              setProducts(products.filter(p => p.id !== id));
+          } else {
+              alert(data.error || 'Error al eliminar producto');
+          }
+      } catch (e) { alert('Error de conexión'); console.error(e); }
+  };
+
   const getTabTitle = () => {
     switch (activeTab) {
       case 'dashboard': return 'Panel General';
       case 'products': return 'Gestión de Productos';
       case 'categories': return 'Gestión de Categorías';
+      case 'brands_admin': return 'Gestión de Marcas';
       case 'collections': return 'Colecciones';
       case 'settings': return 'Configuración de la Tienda';
       default: return 'Panel General';
@@ -150,11 +249,16 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
           <button onClick={() => setActiveTab('products')} className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'products' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
               <Package className="h-5 w-5"/> Productos
           </button>
-          <button onClick={() => setActiveTab('categories')} className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'categories' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
-              <Grid className="h-5 w-5"/> Categorías
+          <button onClick={() => setActiveTab('categories')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${activeTab === 'categories' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}>
+              <Grid className="h-5 w-5" /> Categorías
           </button>
-          <button onClick={() => setActiveTab('collections')} className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-lg font-medium transition-all ${activeTab === 'collections' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
-              <Folder className="h-5 w-5"/> Colecciones
+          {enableBrandsModule && (
+              <button onClick={() => setActiveTab('brands_admin')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${activeTab === 'brands_admin' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}>
+                  <Tag className="h-5 w-5" /> Marcas
+              </button>
+          )}
+          <button onClick={() => setActiveTab('collections')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${activeTab === 'collections' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}>
+              <Folder className="h-5 w-5" /> Colecciones
           </button>
           
           <div className="my-4 border-t border-border"></div>
@@ -252,7 +356,7 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
             <div className="bg-card rounded-2xl border border-border overflow-hidden animate-in fade-in shadow-sm">
                 <div className="p-6 border-b border-border flex justify-between items-center bg-muted/20">
                     <input type="text" placeholder="Buscar productos..." className="px-4 py-2 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary outline-none max-w-sm w-full" />
-                    <button onClick={() => setShowProductModal(true)} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors">
+                    <button onClick={() => { setNewProduct(defaultProduct); setEditingProductId(null); setShowProductModal(true); }} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors">
                         <Plus className="h-4 w-4"/> Agregar Producto
                     </button>
                 </div>
@@ -264,6 +368,7 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
                                 <th className="px-6 py-4 font-medium">Categoría</th>
                                 <th className="px-6 py-4 font-medium">Precio</th>
                                 <th className="px-6 py-4 font-medium">Stock</th>
+                                <th className="px-6 py-4 font-medium text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -273,6 +378,10 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
                                     <td className="px-6 py-4 text-muted-foreground">{p.category_name}</td>
                                     <td className="px-6 py-4">S/ {p.price}</td>
                                     <td className="px-6 py-4">{p.stock}</td>
+                                    <td className="px-6 py-4 flex items-center justify-end gap-2">
+                                        <button onClick={() => { setNewProduct(p); setEditingProductId(p.id); setShowProductModal(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar"><Edit2 className="h-4 w-4"/></button>
+                                        <button onClick={() => handleDeleteProduct(p.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar"><Trash2 className="h-4 w-4"/></button>
+                                    </td>
                                 </tr>
                             ))}
                             {products.length === 0 && (
@@ -288,7 +397,7 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
             <div className="bg-card rounded-2xl border border-border overflow-hidden animate-in fade-in shadow-sm">
                 <div className="p-6 border-b border-border flex justify-between items-center bg-muted/20">
                     <h2 className="text-lg font-bold">Jerarquía de la Tienda</h2>
-                    <button onClick={() => setShowCategoryModal(true)} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors">
+                    <button onClick={() => { setNewCategory(defaultCategory); setEditingCategoryId(null); setShowCategoryModal(true); }} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors">
                         <Plus className="h-4 w-4"/> Agregar Categoría
                     </button>
                 </div>
@@ -299,6 +408,7 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
                                 <th className="px-6 py-4 font-medium">ID</th>
                                 <th className="px-6 py-4 font-medium">Nombre de Categoría</th>
                                 <th className="px-6 py-4 font-medium">Descripción</th>
+                                <th className="px-6 py-4 font-medium text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -307,6 +417,48 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
                                     <td className="px-6 py-4">#{c.id}</td>
                                     <td className="px-6 py-4 font-medium text-foreground">{c.name}</td>
                                     <td className="px-6 py-4 text-muted-foreground">{c.description}</td>
+                                    <td className="px-6 py-4 flex items-center justify-end gap-2">
+                                        <button onClick={() => { setNewCategory({name: c.name, description: c.description}); setEditingCategoryId(c.id); setShowCategoryModal(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar"><Edit2 className="h-4 w-4"/></button>
+                                        <button onClick={() => handleDeleteCategory(c.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar"><Trash2 className="h-4 w-4"/></button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        )}
+
+        {activeTab === 'brands_admin' && (
+            <div className="bg-card rounded-2xl border border-border overflow-hidden animate-in fade-in shadow-sm">
+                <div className="p-6 border-b border-border flex justify-between items-center bg-muted/20">
+                    <h2 className="text-lg font-bold">Gestión de Marcas</h2>
+                    <button onClick={() => { setNewBrand(defaultBrand); setEditingBrandId(null); setShowBrandModal(true); }} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors">
+                        <Plus className="h-4 w-4"/> Agregar Marca
+                    </button>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-muted/30 text-muted-foreground">
+                            <tr>
+                                <th className="px-6 py-4 font-medium">Logo</th>
+                                <th className="px-6 py-4 font-medium">Marca</th>
+                                <th className="px-6 py-4 font-medium">Descripción</th>
+                                <th className="px-6 py-4 font-medium text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                            {brandsList.map(b => (
+                                <tr key={b.id} className="hover:bg-muted/30">
+                                    <td className="px-6 py-4">
+                                        {b.image_url ? <img src={b.image_url} alt={b.name} className="h-8 w-8 rounded-full object-cover"/> : <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center"><Tag className="h-4 w-4 text-muted-foreground"/></div>}
+                                    </td>
+                                    <td className="px-6 py-4 font-medium text-foreground">{b.name}</td>
+                                    <td className="px-6 py-4 text-muted-foreground">{b.description}</td>
+                                    <td className="px-6 py-4 flex items-center justify-end gap-2">
+                                        <button onClick={() => { setNewBrand({name: b.name, description: b.description, image_url: b.image_url || ''}); setEditingBrandId(b.id); setShowBrandModal(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar"><Edit2 className="h-4 w-4"/></button>
+                                        <button onClick={() => handleDeleteBrand(b.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar"><Trash2 className="h-4 w-4"/></button>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -353,6 +505,34 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
                             <input type="text" name="primaryColor" value={settings?.primaryColor || '#723b13'} onChange={handleSettingChange} className="flex-1 px-4 py-3 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary outline-none transition-all text-foreground font-mono uppercase" />
                         </div>
                     </div>
+
+                    <div className="pt-6 border-t border-border">
+                        <h3 className="text-lg font-bold text-foreground mb-4">Pantalla Principal (Hero)</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-2">Título Principal</label>
+                                <input type="text" name="heroTitle" value={settings?.heroTitle || ''} onChange={handleSettingChange} placeholder="Experience Rwandan" className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary outline-none transition-all text-foreground" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-2">Palabra Resaltada</label>
+                                <input type="text" name="heroHighlight" value={settings?.heroHighlight || ''} onChange={handleSettingChange} placeholder="Excellence" className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary outline-none transition-all text-foreground" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-2">Subtítulo / Descripción</label>
+                                <textarea name="heroSubtitle" value={settings?.heroSubtitle || ''} onChange={handleSettingChange} rows={2} placeholder="Hand-picked, artisanal coffee..." className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary outline-none transition-all text-foreground resize-none" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-2">Texto del Botón</label>
+                                    <input type="text" name="heroButtonText" value={settings?.heroButtonText || ''} onChange={handleSettingChange} placeholder="Explore Our Collection" className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary outline-none transition-all text-foreground" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-2">Imagen de Fondo (URL)</label>
+                                    <input type="text" name="heroBgUrl" value={settings?.heroBgUrl || ''} onChange={handleSettingChange} placeholder="https://..." className="w-full px-4 py-3 rounded-lg border border-border bg-background focus:ring-2 focus:ring-primary outline-none transition-all text-foreground" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
                     <div className="pt-6 border-t border-border">
                         <h3 className="text-lg font-bold text-foreground mb-4">Módulos del Menú (Header)</h3>
@@ -365,6 +545,22 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
                               </div>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-border">
+                        <h3 className="text-lg font-bold text-foreground mb-4">Módulos Internos de la Tienda</h3>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-4 bg-background p-3 rounded-lg border border-border">
+                                <input type="checkbox" checked={enableBrandsModule} onChange={() => toggleBoolSetting('enableBrandsModule')} className="w-5 h-5 accent-primary cursor-pointer"/>
+                                <div className="flex-1">
+                                    <span className="font-medium text-foreground block">Habilitar Módulo de "Marcas / Fabricantes"</span>
+                                    <span className="text-xs text-muted-foreground">Admin panel y Filtros Laterales</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
+                            Desactiva esta opción si fabricas tus propios productos (ej. Tienda Oficial de "*Real Quillabamba*") y las marcas de terceros son redundantes.
+                        </p>
                     </div>
 
                     <div className="pt-6 border-t border-border">
@@ -399,7 +595,7 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
           <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="bg-card w-full max-w-2xl rounded-2xl border border-border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                   <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/30">
-                      <h3 className="font-bold text-lg text-foreground">Crear en Base de Datos</h3>
+                      <h3 className="font-bold text-lg text-foreground">{editingProductId ? 'Editar Producto' : 'Crear en Base de Datos'}</h3>
                       <button onClick={() => setShowProductModal(false)} className="text-muted-foreground hover:bg-muted p-1 rounded-full hover:text-foreground transition-colors"><X className="h-5 w-5"/></button>
                   </div>
                   <div className="p-6 space-y-4">
@@ -417,11 +613,29 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
                           </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
-                          <div className="col-span-1">
-                              <label className="block text-xs font-medium mb-1 text-muted-foreground uppercase tracking-wider">Imagen URL</label>
-                              <input type="text" value={newProduct.image_url} onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} className="w-full border border-border bg-background text-foreground rounded-lg px-4 py-2.5 outline-none" placeholder="https://..." />
-                          </div>
-                          <div className="col-span-1 grid grid-cols-2 gap-4">
+                          {enableBrandsModule ? (
+                              <div className="col-span-2 grid grid-cols-2 gap-4">
+                                  <div>
+                                      <label className="block text-xs font-medium mb-1 text-muted-foreground uppercase tracking-wider">Marca</label>
+                                      <select value={newProduct.brand || ''} onChange={e => setNewProduct({...newProduct, brand: e.target.value})} className="w-full border border-border bg-background text-foreground rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary outline-none">
+                                         <option value="">(Sin definir o Genérica)</option>
+                                         {brandsList.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
+                                      </select>
+                                  </div>
+                                  <div>
+                                      <label className="block text-xs font-medium mb-1 text-muted-foreground uppercase tracking-wider">Imagen URL</label>
+                                      <input type="text" value={newProduct.image_url} onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} className="w-full border border-border bg-background text-foreground rounded-lg px-4 py-2.5 outline-none" placeholder="https://..." />
+                                  </div>
+                              </div>
+                          ) : (
+                              <div className="col-span-2">
+                                  <label className="block text-xs font-medium mb-1 text-muted-foreground uppercase tracking-wider">Imagen URL</label>
+                                  <input type="text" value={newProduct.image_url} onChange={e => setNewProduct({...newProduct, image_url: e.target.value})} className="w-full border border-border bg-background text-foreground rounded-lg px-4 py-2.5 outline-none" placeholder="https://..." />
+                              </div>
+                          )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div className="col-span-2 grid grid-cols-2 gap-4">
                                <div>
                                   <label className="block text-xs font-medium mb-1 text-muted-foreground uppercase tracking-wider">Precio (S/)</label>
                                   <input type="number" step="0.01" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="w-full border border-border bg-background text-foreground rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary outline-none" placeholder="0.00" />
@@ -438,8 +652,8 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
                       </div>
                       <div className="pt-6 flex justify-end gap-3 border-t border-border mt-6">
                           <button onClick={() => setShowProductModal(false)} className="px-5 py-2.5 rounded-lg border border-border bg-transparent text-foreground hover:bg-muted font-medium transition-colors">Cancelar</button>
-                          <button onClick={handleAddProduct} disabled={isSavingProduct} className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-2">
-                              {isSavingProduct ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Guardar Producto (SQL POST)'}
+                          <button onClick={handleSaveProduct} disabled={isSavingProduct} className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-2">
+                              {isSavingProduct ? <Loader2 className="h-4 w-4 animate-spin"/> : (editingProductId ? 'Actualizar Producto' : 'Guardar Producto (SQL)')}
                           </button>
                       </div>
                   </div>
@@ -451,7 +665,7 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
           <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="bg-card w-full max-w-md rounded-2xl border border-border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                   <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/30">
-                      <h3 className="font-bold text-lg text-foreground">Crear Categoría SQL</h3>
+                      <h3 className="font-bold text-lg text-foreground">{editingCategoryId ? 'Editar Categoría' : 'Crear Categoría SQL'}</h3>
                       <button onClick={() => setShowCategoryModal(false)} className="text-muted-foreground hover:bg-muted p-1 rounded-full hover:text-foreground transition-colors"><X className="h-5 w-5"/></button>
                   </div>
                   <div className="p-6 space-y-4">
@@ -465,7 +679,36 @@ export const AdminPanel = ({ onBack, settings, onUpdateSettings }) => {
                       </div>
                       <div className="pt-6 flex justify-end gap-3 border-t border-border mt-6">
                           <button onClick={() => setShowCategoryModal(false)} className="px-5 py-2.5 rounded-lg border border-border bg-transparent text-foreground hover:bg-muted font-medium transition-colors">Cancelar</button>
-                          <button onClick={handleAddCategory} className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm">Guardar en Base de Datos</button>
+                          <button onClick={handleSaveCategory} className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm">{editingCategoryId ? 'Actualizar Categoría' : 'Guardar en Base de Datos'}</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {showBrandModal && (
+          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-card w-full max-w-md rounded-2xl border border-border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                  <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/30">
+                      <h3 className="font-bold text-lg text-foreground">{editingBrandId ? 'Editar Marca' : 'Crear Marca'}</h3>
+                      <button onClick={() => setShowBrandModal(false)} className="text-muted-foreground hover:bg-muted p-1 rounded-full hover:text-foreground transition-colors"><X className="h-5 w-5"/></button>
+                  </div>
+                  <div className="p-6 space-y-4">
+                      <div>
+                          <label className="block text-xs font-medium mb-1 text-muted-foreground uppercase tracking-wider">Nombre de la Marca *</label>
+                          <input type="text" value={newBrand.name} onChange={e => setNewBrand({...newBrand, name: e.target.value})} className="w-full border border-border bg-background text-foreground rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary outline-none" placeholder="Ej: Samsung" />
+                      </div>
+                      <div>
+                          <label className="block text-xs font-medium mb-1 text-muted-foreground uppercase tracking-wider">Logo / Imagen URL</label>
+                          <input type="text" value={newBrand.image_url} onChange={e => setNewBrand({...newBrand, image_url: e.target.value})} className="w-full border border-border bg-background text-foreground rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary outline-none" placeholder="https://..." />
+                      </div>
+                      <div>
+                          <label className="block text-xs font-medium mb-1 text-muted-foreground uppercase tracking-wider">Descripción</label>
+                          <textarea value={newBrand.description} onChange={e => setNewBrand({...newBrand, description: e.target.value})} className="w-full border border-border bg-background text-foreground rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary outline-none resize-none" rows={2}></textarea>
+                      </div>
+                      <div className="pt-6 flex justify-end gap-3 border-t border-border mt-6">
+                          <button onClick={() => setShowBrandModal(false)} className="px-5 py-2.5 rounded-lg border border-border bg-transparent text-foreground hover:bg-muted font-medium transition-colors">Cancelar</button>
+                          <button onClick={handleSaveBrand} className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm">{editingBrandId ? 'Actualizar Marca' : 'Guardar Marca'}</button>
                       </div>
                   </div>
               </div>

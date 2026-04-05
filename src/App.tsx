@@ -38,33 +38,43 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const hexToHSL = (hex: string) => {
+    const applyPrimaryColor = (hex: string) => {
       let r = 0, g = 0, b = 0;
       if (hex.length === 4) {
-        r = parseInt(hex[1] + hex[1], 16) / 255;
-        g = parseInt(hex[2] + hex[2], 16) / 255;
-        b = parseInt(hex[3] + hex[3], 16) / 255;
+        r = parseInt(hex[1] + hex[1], 16);
+        g = parseInt(hex[2] + hex[2], 16);
+        b = parseInt(hex[3] + hex[3], 16);
       } else if (hex.length === 7) {
-        r = parseInt(hex.substring(1, 3), 16) / 255;
-        g = parseInt(hex.substring(3, 5), 16) / 255;
-        b = parseInt(hex.substring(5, 7), 16) / 255;
+        r = parseInt(hex.substring(1, 3), 16);
+        g = parseInt(hex.substring(3, 5), 16);
+        b = parseInt(hex.substring(5, 7), 16);
       }
-      let max = Math.max(r, g, b), min = Math.min(r, g, b);
+      
+      let rf = r / 255, gf = g / 255, bf = b / 255;
+      let max = Math.max(rf, gf, bf), min = Math.min(rf, gf, bf);
       let h = 0, s = 0, l = (max + min) / 2;
       if (max !== min) {
         let d = max - min;
         s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
         switch (max) {
-          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-          case g: h = (b - r) / d + 2; break;
-          case b: h = (r - g) / d + 4; break;
+          case rf: h = (gf - bf) / d + (gf < bf ? 6 : 0); break;
+          case gf: h = (bf - rf) / d + 2; break;
+          case bf: h = (rf - gf) / d + 4; break;
         }
         h /= 6;
       }
-      return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+      
+      document.documentElement.style.setProperty('--primary', `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`);
+      
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      if (luminance > 0.6) {
+        document.documentElement.style.setProperty('--primary-foreground', '0 0% 0%'); 
+      } else {
+        document.documentElement.style.setProperty('--primary-foreground', '210 40% 98%'); 
+      }
     };
     if (settings.primaryColor) {
-      document.documentElement.style.setProperty('--primary', hexToHSL(settings.primaryColor));
+      applyPrimaryColor(settings.primaryColor);
     }
   }, [settings.primaryColor]);
 
@@ -79,8 +89,12 @@ export default function App() {
     localStorage.setItem('darkMode', JSON.stringify(newMode));
   };
 
-  const navigateTo = (screen) => {
+  const [shopDefaultBrand, setShopDefaultBrand] = useState(null);
+
+  const navigateTo = (screen, context: any = null) => {
     setActiveScreen(screen);
+    if (screen === 'shop' && context?.brand) setShopDefaultBrand(context.brand);
+    else if (screen === 'shop') setShopDefaultBrand(null);
     window.scrollTo(0, 0);
   };
 
@@ -105,8 +119,8 @@ export default function App() {
     };
 
     let content = null;
-    if (activeScreen === 'shop') content = <ShopScreen onSelectProduct={(p) => { setSelectedProduct(p); navigateTo('product'); }} />;
-    else if (activeScreen === 'brands') content = <BrandsScreen />;
+    if (activeScreen === 'shop') content = <ShopScreen onSelectProduct={(p) => { setSelectedProduct(p); navigateTo('product'); }} defaultBrand={shopDefaultBrand} settings={settings} />;
+    else if (activeScreen === 'brands') content = <BrandsScreen onBrandSelect={(b) => navigateTo('shop', { brand: b })} />;
     else if (activeScreen === 'collections') content = <CollectionsScreen />;
     else if (activeScreen === 'gallery') content = <GalleryScreen />;
     else content = <HomeScreen 

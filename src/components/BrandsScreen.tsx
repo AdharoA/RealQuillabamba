@@ -1,36 +1,53 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Tag, ArrowRight } from 'lucide-react';
 
-export const BrandsScreen = () => {
-  const brands = [
-    { name: "Maison Margiela", desc: "Vanguardia y deconstrucción parisina.", image: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" },
-    { name: "Céline", desc: "Minimalismo contemporáneo y elegancia absoluta.", image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" },
-    { name: "Bottega Veneta", desc: "Artesanía italiana en cuero y siluetas modernas.", image: "https://images.unsplash.com/photo-1584916201218-f4242ceb4809?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" },
-  ];
+export const BrandsScreen = ({ onBrandSelect }) => {
+  const [brands, setBrands] = useState<any[]>([]);
+  
+  useEffect(() => {
+    fetch('http://localhost/RealQuillabamba/api/brands.php')
+      .then(res => res.json())
+      .then(data => { if(!data.error) setBrands(data); });
+  }, []);
 
   return (
     <div className="min-h-screen bg-background pt-16 pb-32">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="text-center mb-20">
-          <h1 className="text-5xl md:text-7xl font-accent mb-6 text-foreground">Marcas Exclusivas</h1>
-          <p className="text-muted-foreground text-xl max-w-2xl mx-auto">Colaboramos con las casas de moda más prestigiosas del mundo para traerte selecciones únicas.</p>
+        <div className="text-center mb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <h1 className="text-5xl md:text-7xl font-accent mb-6 text-foreground">Marcas y Fabricantes</h1>
+          <p className="text-muted-foreground text-xl max-w-2xl mx-auto">Colaboramos con las marcas más prestigiosas para asegurar la calidad de cada producto en nuestro catálogo.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {brands.map((brand, idx) => (
-            <div key={idx} className="group relative h-[500px] rounded-sm overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all">
-              <img src={brand.image} alt={brand.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 grayscale hover:grayscale-0" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8">
-                <h3 className="text-3xl font-accent text-white mb-2">{brand.name}</h3>
-                <p className="text-white/80">{brand.desc}</p>
-                <div className="mt-6">
-                  <span className="inline-block border border-white text-white px-6 py-2 uppercase tracking-widest text-[10px] font-bold group-hover:bg-white group-hover:text-black transition-colors">
-                    Ver Colección
+            <div key={idx} onClick={() => onBrandSelect && onBrandSelect(brand.name)} className="group relative h-[450px] rounded-[2rem] overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-500 animate-in fade-in zoom-in-95" style={{ animationDelay: `${idx * 150}ms` }}>
+              {brand.image_url ? (
+                  <img src={brand.image_url} alt={brand.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+              ) : (
+                  <div className="absolute inset-0 bg-muted flex items-center justify-center">
+                     <Tag className="h-20 w-20 text-muted-foreground/30" />
+                  </div>
+              )}
+              
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-8">
+                <h3 className="text-3xl font-bold text-white mb-3 group-hover:text-primary transition-colors">{brand.name}</h3>
+                <p className="text-white/80 text-sm leading-relaxed mb-6 line-clamp-3">{brand.description}</p>
+                <div className="mt-auto">
+                  <span className="inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest group-hover:bg-primary group-hover:text-primary-foreground transition-colors group-hover:shadow-[0_0_20px_rgba(var(--primary),0.4)]">
+                    Explorar Colección <ArrowRight className="h-4 w-4" />
                   </span>
                 </div>
               </div>
             </div>
           ))}
         </div>
+        {brands.length === 0 && (
+            <div className="text-center p-20 border border-dashed border-border rounded-3xl mt-10">
+                <Tag className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                <h3 className="text-xl font-bold text-foreground mb-2">No hay marcas registradas</h3>
+                <p className="text-muted-foreground">Usa el panel administrativo para agregar fabricantes o marcas.</p>
+            </div>
+        )}
       </div>
     </div>
   );
