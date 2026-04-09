@@ -27,7 +27,7 @@ export const AIChat = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost/RealQuillabamba/api/ai_chat.php', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/ai_chat.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMsg })

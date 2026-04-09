@@ -27,7 +27,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    fetch('http://localhost/RealQuillabamba/api/settings.php')
+    fetch(`${import.meta.env.VITE_API_URL}/settings.php`)
       .then(res => res.json())
       .then(data => {
         if (data && !data.error) {

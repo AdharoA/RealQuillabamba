@@ -5,7 +5,7 @@ export const BrandsScreen = ({ onBrandSelect }) => {
   const [brands, setBrands] = useState<any[]>([]);
   
   useEffect(() => {
-    fetch('http://localhost/RealQuillabamba/api/brands.php')
+    fetch(`${import.meta.env.VITE_API_URL}/brands.php`)
       .then(res => res.json())
       .then(data => { if(!data.error) setBrands(data); });
   }, []);

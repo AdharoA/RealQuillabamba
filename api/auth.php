@@ -10,8 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$data['email']]);
         $user = $stmt->fetch();
         
-        // Comparamos el hash md5 (se usa md5 en vez de bcrypt para facilitar el testing del usuario en InfinityFree localmente con mocks manuales)
-        if ($user && md5($data['password']) === $user['password_hash']) {
+        // Comparamos usando password_verify para soportar el algoritmo seguro Bcrypt
+        if ($user && password_verify($data['password'], $user['password_hash'])) {
             echo json_encode([
                 "status" => "success", 
                 "user" => [

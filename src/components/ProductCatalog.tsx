@@ -6,7 +6,7 @@ export const ProductCatalog = ({ onSelect, filters = {} }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-     fetch('http://localhost/RealQuillabamba/api/products.php')
+     fetch(`${import.meta.env.VITE_API_URL}/products.php`)
        .then(res => res.json())
        .then(data => {
            if(!data.error) setProducts(data);

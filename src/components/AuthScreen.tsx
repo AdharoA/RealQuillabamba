@@ -14,7 +14,7 @@ export const AuthScreen = ({ onAuth, onCancel }) => {
     setError('');
     
     try {
-        const res = await fetch('http://localhost/RealQuillabamba/api/auth.php', {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/auth.php`, {
             method: 'POST',
             body: JSON.stringify({ email, password }),
             headers: { 'Content-Type': 'application/json' }

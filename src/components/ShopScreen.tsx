@@ -11,8 +11,8 @@ export const ShopScreen = ({ onSelectProduct, defaultBrand = null, settings = {}
   const [selectedBrands, setSelectedBrands] = useState<string[]>(defaultBrand ? [defaultBrand] : []);
 
   useEffect(() => {
-    fetch('http://localhost/RealQuillabamba/api/categories.php').then(res => res.json()).then(data => { if(!data.error) setCategories(data); });
-    fetch('http://localhost/RealQuillabamba/api/brands.php').then(res => res.json()).then(data => { if(!data.error) setBrands(data); });
+    fetch(`${import.meta.env.VITE_API_URL}/categories.php`).then(res => res.json()).then(data => { if(!data.error) setCategories(data); });
+    fetch(`${import.meta.env.VITE_API_URL}/brands.php`).then(res => res.json()).then(data => { if(!data.error) setBrands(data); });
   }, []);
 
   const toggleCategory = (id) => {

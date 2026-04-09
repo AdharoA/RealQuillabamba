@@ -70,6 +70,6 @@ CREATE TABLE `users` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- The hash is MD5 for 'password123' to keep the mock simple and easy to migrate.
+-- The hash is Bcrypt for 'password123' to ensure secure authentication in production.
 INSERT INTO `users` (`email`, `password_hash`, `role`) VALUES 
-('a@a.com', md5('password123'), 'admin');
+('a@a.com', '$2y$10$X6g6ht2yu7QYJfx5aqbCpuXVLZSRzYz14SF2ZDz5Cqaq7LIQXRJJu', 'admin');
